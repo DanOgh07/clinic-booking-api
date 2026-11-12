@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: clinic-booking-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: DATABASE_URL      # Neon connection string (set in the Render dashboard)
+        sync: false
+      - key: API_KEY           # the key you submit to the assessors
+        sync: false

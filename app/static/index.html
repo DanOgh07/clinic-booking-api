@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Book an appointment</title>
+<style>
+  :root {
+    --bg: #f6f8f7; --card: #fff; --text: #17211d; --muted: #5d6b65; --line: #dbe3df;
+    --brand: #0f766e; --brand-dark: #0b5a54; --danger: #b42318; --ok: #067647; --okbg: #e8f6ee;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1513; --card: #18211e; --text: #e8efec; --muted: #9aaba3; --line: #2b3833;
+            --brand: #2dd4bf; --brand-dark: #5eead4; --danger: #f97066; --ok: #47cd89; --okbg: #12301f; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+         background: var(--bg); color: var(--text); }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { font-size: 1.1rem; margin: 0 0 12px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+            padding: 16px; margin-bottom: 16px; }
+  label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: 4px; }
+  input, select { width: 100%; padding: 10px 12px; font: inherit; color: inherit; background: transparent;
+                  border: 1px solid var(--line); border-radius: 8px; }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+  .row > div { flex: 1 1 200px; }
+  button { font: inherit; cursor: pointer; padding: 10px 16px; border-radius: 8px; border: 1px solid var(--brand);
+           background: var(--brand); color: #fff; font-weight: 600; }
+  @media (prefers-color-scheme: dark) { button { color: #04201c; } }
+  button.secondary { background: transparent; color: var(--brand-dark); }
+  button.danger { background: transparent; color: var(--danger); border-color: var(--danger); }
+  button:disabled { opacity: .55; cursor: not-allowed; }
+  .slot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+          padding: 12px 0; border-top: 1px solid var(--line); }
+  .slot:first-of-type { border-top: 0; }
+  .slot b { display: block; }
+  .slot small, .muted { color: var(--muted); }
+  .tag { font-size: .75rem; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+  .msg { padding: 10px 12px; border-radius: 8px; margin-top: 12px; border: 1px solid var(--line); }
+  .msg.error { color: var(--danger); border-color: var(--danger); }
+  .confirm { background: var(--okbg); border-color: var(--ok); }
+  .confirm h2 { color: var(--ok); }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0 0 12px; }
+  dt { color: var(--muted); } dd { margin: 0; word-break: break-all; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Book an appointment</h1>
+  <p class="sub">Pick a time, tell us who you are, and you're booked.</p>
+
+  <section id="keyBox">
+    <h2>API key</h2>
+    <div class="row">
+      <div><label for="key">Enter the clinic API key to continue</label>
+           <input id="key" type="password" autocomplete="off" placeholder="X-API-Key"></div>
+      <button id="saveKey" type="button">Use key</button>
+    </div>
+    <div id="keyMsg" class="msg error" hidden></div>
+  </section>
+
+  <section id="slotsBox" hidden>
+    <div class="row" style="margin-bottom:8px">
+      <div><h2 style="margin:0">Available times</h2></div>
+      <div style="flex:0 1 220px"><label for="provider">Provider</label><select id="provider"><option value="">All providers</option></select></div>
+    </div>
+    <div id="slots" aria-live="polite"></div>
+    <div id="slotsMsg" class="msg error" hidden></div>
+  </section>
+
+  <section id="formBox" hidden>
+    <h2>Your details</h2>
+    <p id="chosen" class="muted" style="margin-top:0"></p>
+    <div class="row">
+      <div><label for="name">Full name</label><input id="name" autocomplete="name" maxlength="200"></div>
+      <div><label for="email">Email</label><input id="email" type="email" autocomplete="email"></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button id="book" type="button">Confirm booking</button>
+      <button id="cancelForm" class="secondary" type="button">Back</button>
+    </div>
+    <div id="formMsg" class="msg error" hidden></div>
+  </section>
+
+  <section id="confirmBox" class="confirm" hidden aria-live="polite">
+    <h2 id="confirmTitle">Booking confirmed</h2>
+    <dl id="confirmDetails"></dl>
+    <div class="row"><button id="cancelBooking" class="danger" type="button">Cancel this booking</button>
+      <button id="another" class="secondary" type="button">Book another</button></div>
+    <div id="confirmMsg" class="msg error" hidden></div>
+  </section>
+
+  <section id="mineBox" hidden>
+    <h2>Look up my bookings</h2>
+    <div class="row">
+      <div><label for="lookupEmail">Email</label><input id="lookupEmail" type="email" autocomplete="email"></div>
+      <button id="lookup" class="secondary" type="button">Show bookings</button>
+    </div>
+    <div id="mine"></div>
+    <button id="more" class="secondary" type="button" hidden style="margin-top:12px">Load more</button>
+    <div id="mineMsg" class="msg error" hidden></div>
+  </section>
+</main>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const fmt = (iso) => new Date(iso).toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+let slotsById = {}, chosen = null, lastBooking = null, pendingKey = null, pendingSig = null, nextCursor = null, lookupMail = "";
+
+function el(tag, props, ...kids) {              // builds DOM with textContent only, so user data is never parsed as HTML
+  const n = Object.assign(document.createElement(tag), props || {});
+  for (const k of kids) n.append(k);
+  return n;
+}
+function show(node, text) { node.textContent = text || ""; node.hidden = !text; }
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    ...opts,
+    headers: { "X-API-Key": sessionStorage.getItem("apiKey") || "", "Content-Type": "application/json", ...(opts.headers || {}) },
+  });
+  let body = null;
+  try { body = await res.json(); } catch (_) {}
+  if (res.status === 401) { sessionStorage.removeItem("apiKey"); $("keyBox").hidden = false; }
+  return { status: res.status, body, retryAfter: res.headers.get("Retry-After") };
+}
+
+function explain(r) {
+  const msg = (r.body && r.body.error) || "Something went wrong.";
+  if (r.status === 401) return "That API key was not accepted.";
+  if (r.status === 409) return "Sorry, that time was just taken. Please pick another.";
+  if (r.status === 429) return `Too many attempts for this email. Please try again in ${r.retryAfter || "a minute"} seconds.`;
+  return msg.charAt(0).toUpperCase() + msg.slice(1) + (msg.endsWith(".") ? "" : ".");
+}
+
+async function loadSlots() {
+  const p = $("provider").value;
+  const r = await api("/slots" + (p ? "?provider=" + encodeURIComponent(p) : ""));
+  if (r.status !== 200) { show($("keyMsg"), explain(r)); $("slotsBox").hidden = true; return false; }
+  show($("keyMsg"), ""); $("keyBox").hidden = true;
+  $("slotsBox").hidden = false; $("mineBox").hidden = false;
+  const slots = r.body.slots;
+  slotsById = Object.fromEntries(slots.map((s) => [s.id, s]));
+  if (!p) {                                      // fill the provider filter from the unfiltered list
+    const names = [...new Set(slots.map((s) => s.provider))];
+    $("provider").replaceChildren(el("option", { value: "", textContent: "All providers" }), ...names.map((n) => el("option", { value: n, textContent: n })));
+  }
+  const now = Date.now();
+  const list = slots.filter((s) => new Date(s.start).getTime() > now);
+  $("slots").replaceChildren(...(list.length ? list.map(slotRow) : [el("p", { className: "muted", textContent: "No upcoming slots right now." })]));
+  show($("slotsMsg"), "");
+  return true;
+}
+
+function slotRow(s) {
+  const btn = el("button", { type: "button", textContent: "Book", disabled: !s.available });
+  btn.onclick = () => choose(s.id);
+  return el("div", { className: "slot" },
+    el("div", {}, el("b", { textContent: fmt(s.start) }), el("small", { textContent: `${s.provider} · until ${new Date(s.end).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` })),
+    s.available ? btn : el("span", { className: "tag", textContent: "Taken" }));
+}
+
+function choose(id) {
+  chosen = slotsById[id];
+  $("chosen").textContent = `${chosen.provider}, ${fmt(chosen.start)}`;
+  $("confirmBox").hidden = true; $("formBox").hidden = false; show($("formMsg"), "");
+  $("name").focus();
+}
+
+$("book").onclick = async () => {
+  const name = $("name").value.trim(), email = $("email").value.trim();
+  if (!name) return show($("formMsg"), "Please enter your name.");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return show($("formMsg"), "Please enter a valid email address.");
+  const sig = [chosen.id, name, email].join("|");
+  if (sig !== pendingSig) { pendingSig = sig; pendingKey = crypto.randomUUID(); }  // same form again = same key, so a retry can never double-book
+  $("book").disabled = true; show($("formMsg"), "");
+  let r;
+  try { r = await api("/bookings", { method: "POST", headers: { "Idempotency-Key": pendingKey }, body: JSON.stringify({ slot_id: chosen.id, name, email }) }); }
+  catch (_) { $("book").disabled = false; return show($("formMsg"), "Could not reach the server. Check your connection and press Confirm again; you won't be booked twice."); }
+  $("book").disabled = false;
+  if (r.status === 201) {
+    pendingKey = pendingSig = null; lastBooking = r.body;
+    $("formBox").hidden = true; renderConfirmation(r.body); loadSlots();
+  } else {
+    if (r.status !== 429) { pendingKey = pendingSig = null; }
+    show($("formMsg"), explain(r));
+    if (r.status === 409) loadSlots();
+  }
+};
+$("cancelForm").onclick = () => { $("formBox").hidden = true; };
+
+function renderConfirmation(b) {
+  const s = slotsById[b.slot_id];
+  const rows = [["Status", b.status], ["Booking ID", b.id], ["Name", b.name], ["Email", b.email]];
+  if (s) rows.splice(1, 0, ["When", fmt(s.start)], ["Provider", s.provider]);
+  $("confirmDetails").replaceChildren(...rows.flatMap(([k, v]) => [el("dt", { textContent: k }), el("dd", { textContent: v })]));
+  $("confirmTitle").textContent = b.status === "cancelled" ? "Booking cancelled" : "Booking confirmed";
+  $("cancelBooking").hidden = b.status !== "confirmed";
+  show($("confirmMsg"), ""); $("confirmBox").hidden = false; $("confirmBox").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+$("cancelBooking").onclick = async () => {
+  if (!lastBooking || !confirm("Cancel this booking?")) return;
+  const r = await api("/bookings/" + encodeURIComponent(lastBooking.id), { method: "DELETE" });
+  if (r.status === 200) { lastBooking = r.body; renderConfirmation(r.body); loadSlots(); if (lookupMail) lookup("refresh"); }
+  else show($("confirmMsg"), explain(r));
+};
+$("another").onclick = () => { $("confirmBox").hidden = true; window.scrollTo({ top: 0, behavior: "smooth" }); };
+
+async function lookup(mode) {                 // "new" = button press, "more" = next page, "refresh" = reload same email
+  const append = mode === "more";
+  const email = mode === "new" ? $("lookupEmail").value.trim() : lookupMail;
+  if (!email) return show($("mineMsg"), "Enter the email you booked with.");
+  const qs = new URLSearchParams({ email, limit: "5" });
+  if (append && nextCursor) qs.set("cursor", nextCursor);
+  const r = await api("/bookings?" + qs);
+  if (r.status !== 200) return show($("mineMsg"), explain(r));
+  show($("mineMsg"), ""); lookupMail = email; nextCursor = r.body.next_cursor;
+  const rows = r.body.bookings.map((b) => {
+    const s = slotsById[b.slot_id];
+    return el("div", { className: "slot" }, el("div", {}, el("b", { textContent: s ? fmt(s.start) : b.slot_id }),
+      el("small", { textContent: `${s ? s.provider + " · " : ""}ID ${b.id}` })), el("span", { className: "tag", textContent: b.status }));
+  });
+  if (append) $("mine").append(...rows);
+  else $("mine").replaceChildren(...(rows.length ? rows : [el("p", { className: "muted", textContent: "No bookings found for that email." })]));
+  $("more").hidden = !nextCursor;
+}
+$("lookup").onclick = () => lookup("new");
+$("more").onclick = () => lookup("more");
+
+$("provider").onchange = loadSlots;
+$("saveKey").onclick = async () => { sessionStorage.setItem("apiKey", $("key").value.trim()); await loadSlots(); };
+$("key").onkeydown = (e) => { if (e.key === "Enter") $("saveKey").click(); };
+if (sessionStorage.getItem("apiKey")) loadSlots();
+</script>
+</body>
+</html>
